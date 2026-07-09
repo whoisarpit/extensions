@@ -1,17 +1,28 @@
-name: Package Extensions
+name: publish__gemini-always-temp
 
 on:
   push:
     branches: [main]
+    paths:
+      - ".github/workflows/publish__gemini-always-temp.yml"
+      - "gemini-always-temp/**"
   pull_request:
     branches: [main]
+    paths:
+      - ".github/workflows/publish__gemini-always-temp.yml"
+      - "gemini-always-temp/**"
 
 permissions:
   contents: write
 
 jobs:
-  package:
+  package-gemini-always-temp:
     runs-on: ubuntu-latest
+    environment: gemini-always-temp
+    env:
+      EXTENSION_DIR: gemini-always-temp
+      EXTENSION_NAME: Gemini Always Temporary Chat
+      EXTENSION_SLUG: gemini-always-temp
     steps:
       - uses: actions/checkout@v4
 
@@ -22,22 +33,25 @@ jobs:
 
       - name: Read version from manifest
         id: version
-        run: echo "version=$(jq -r .version chrome/manifest.json)" >> "$GITHUB_OUTPUT"
+        run: |
+          version=$(jq -r .version "$EXTENSION_DIR/chrome/manifest.json")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$EXTENSION_SLUG-v$version" >> "$GITHUB_OUTPUT"
 
       - name: Package Chrome extension
-        run: cd chrome && zip -r ../gemini-always-temp-chrome.zip .
+        run: cd "$EXTENSION_DIR/chrome" && zip -r "../../$EXTENSION_SLUG-chrome.zip" .
 
       - name: Upload Chrome extension artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gemini-always-temp-chrome
-          path: gemini-always-temp-chrome.zip
+          name: ${{ env.EXTENSION_SLUG }}-chrome
+          path: ${{ env.EXTENSION_SLUG }}-chrome.zip
 
       - name: Check if release exists
         if: github.event_name == 'push'
         id: check_release
         run: |
-          if gh release view "v${{ steps.version.outputs.version }}" &>/dev/null; then
+          if gh release view "${{ steps.version.outputs.release_tag }}" &>/dev/null; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
@@ -49,9 +63,9 @@ jobs:
         if: github.event_name == 'push' && steps.check_release.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
-          files: gemini-always-temp-chrome.zip
+          tag_name: ${{ steps.version.outputs.release_tag }}
+          name: ${{ env.EXTENSION_NAME }} v${{ steps.version.outputs.version }}
+          files: ${{ env.EXTENSION_SLUG }}-chrome.zip
 
       - name: Resolve Chrome Web Store publish config
         if: github.event_name == 'push' && steps.check_release.outputs.exists == 'false'
@@ -88,7 +102,7 @@ jobs:
             -H "Authorization: Bearer ${{ steps.cws_token.outputs.access_token }}" \
             -H "x-goog-api-version: 2" \
             -H "Content-Type: application/octet-stream" \
-            --data-binary @gemini-always-temp-chrome.zip \
+            --data-binary "@$EXTENSION_SLUG-chrome.zip" \
             "https://chromewebstore.googleapis.com/upload/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:upload"
 
       - name: Publish Chrome extension to Chrome Web Store
@@ -103,7 +117,7 @@ jobs:
         if: github.event_name == 'push' && steps.check_release.outputs.exists == 'false'
         run: |
           npx web-ext sign \
-            --source-dir=firefox/ \
+            --source-dir="$EXTENSION_DIR/firefox/" \
             --channel=listed \
             --api-key="${{ secrets.AMO_JWT_ISSUER }}" \
             --api-secret="${{ secrets.AMO_JWT_SECRET }}" \

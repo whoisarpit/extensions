@@ -1,4 +1,5 @@
 .env
-firefox/.amo-upload-uuid
+**/firefox/.amo-upload-uuid
 *.zip
-firefox/web-ext-artifacts/
+**/firefox/web-ext-artifacts/
+**/web-ext-artifacts/

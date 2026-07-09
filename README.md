@@ -1,49 +1,20 @@
-# Gemini Always Temporary Chat
+# Browser Extensions
 
-A browser extension that automatically enables temporary chat mode when you open Google Gemini.
+Monorepo for browser extensions.
 
-Click the toolbar icon to toggle on (blue) or off (grey).
+## Extensions
 
-## Install
+- **[Gemini Always Temporary Chat](gemini-always-temp/)**: automatically enables temporary chat mode when you open Google Gemini.
 
-- **Firefox:** [Install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/gemini-always-temporary-chat/)
-- **Chrome:** [Install from Chrome Web Store](https://chromewebstore.google.com/detail/gemini-always-temporary-c/kelpmaddlmkdagkfkmnlpjhokcopfnhl)
+## Repository Layout
 
-## Development
+Each extension lives in its own subdirectory with browser-specific builds inside that directory:
 
-### Firefox
+```text
+<extension>/
+  chrome/
+  firefox/
+  README.md
+```
 
-1. Clone the repo
-2. Open `about:debugging#/runtime/this-firefox`
-3. Click "Load Temporary Add-on..."
-4. Select `firefox/manifest.json`
-
-### Chrome
-
-1. Clone the repo
-2. Open `chrome://extensions`
-3. Enable "Developer mode"
-4. Click "Load unpacked"
-5. Select the `chrome/` directory
-
-## CI Publish Automation
-
-Pushes to `main` run `.github/workflows/package.yml`, which now:
-
-1. Packages Chrome zip and creates a GitHub release for the manifest version.
-2. Uploads and publishes the Chrome extension through Chrome Web Store API v2 (if configured).
-3. Submits Firefox to AMO listed channel.
-
-### Required GitHub Secrets
-
-Configure these repository secrets to enable automatic Chrome publish:
-
-- `CWS_PUBLISHER_ID`
-- `CWS_EXTENSION_ID`
-- `CWS_CLIENT_ID`
-- `CWS_CLIENT_SECRET`
-- `CWS_REFRESH_TOKEN`
-- `AMO_JWT_ISSUER`
-- `AMO_JWT_SECRET`
-
-If the Chrome secrets are missing, the workflow will skip Chrome API publish and still continue with release + Firefox submission.
+Shared GitHub Actions workflows live at the repository root in `.github/workflows/`; GitHub does not discover workflow files inside extension subdirectories. Each publish job should use an extension-specific job id, GitHub Environment, artifact name, release name, and release tag prefix. Extension-specific setup, install, and publish details live in each extension directory.
