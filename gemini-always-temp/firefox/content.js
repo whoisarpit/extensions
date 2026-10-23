@@ -1,56 +1,41 @@
+let enabled = false;
+let intervalId;
+let lastClickAt = 0;
+
 function isTempChatActive() {
-  const button =
-    document.querySelector('[data-test-id="temp-chat-button"]') ||
-    document.querySelector('button[aria-label*="Temporary chat" i]');
-  if (
-    button &&
-    (button.getAttribute("aria-pressed") === "true" ||
-      button.getAttribute("aria-checked") === "true" ||
-      button.classList.contains("active") ||
-      button.classList.contains("selected"))
-  ) {
-    return true;
-  }
-
-  return !!document.querySelector('textarea[placeholder*="temporary chat" i]');
+  return !!document.querySelector("chat-window.is-temporary-chat");
 }
 
-function clickTempChat() {
-  if (isTempChatActive()) return true;
+function ensureTempChat() {
+  if (!enabled || isTempChatActive()) return;
+  if (!/^\/app\/?$/.test(location.pathname)) return;
 
-  const button =
-    document.querySelector('[data-test-id="temp-chat-button"]') ||
-    document.querySelector('button[aria-label*="Temporary chat" i]');
-  if (!button) return false;
+  const button = document.querySelector('button[aria-label="Temporary chat"]');
+  if (!button || button.disabled || button.getClientRects().length === 0)
+    return;
+  if (Date.now() - lastClickAt < 1000) return;
 
+  lastClickAt = Date.now();
   button.click();
-  return true;
 }
 
-function waitAndClick() {
-  if (clickTempChat()) return;
+function setEnabled(value) {
+  enabled = !!value;
+  clearInterval(intervalId);
+  intervalId = undefined;
+  if (!enabled) return;
 
-  const observer = new MutationObserver(() => {
-    if (clickTempChat()) cleanup();
-  });
+  lastClickAt = 0;
+  ensureTempChat();
+  intervalId = setInterval(ensureTempChat, 500);
+}
 
-  const intervalId = setInterval(() => {
-    if (clickTempChat()) cleanup();
-  }, 500);
-
-  const timeoutId = setTimeout(() => {
-    cleanup();
-  }, 15000);
-
-  function cleanup() {
-    observer.disconnect();
-    clearInterval(intervalId);
-    clearTimeout(timeoutId);
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.enabled) {
+    setEnabled(changes.enabled.newValue);
   }
-
-  observer.observe(document.body, { childList: true, subtree: true });
-}
-
-browser.storage.local.get("enabled").then((result) => {
-  if (result.enabled) waitAndClick();
 });
+
+browser.storage.local
+  .get("enabled")
+  .then((result) => setEnabled(result.enabled));
